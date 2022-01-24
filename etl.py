@@ -6,10 +6,22 @@ from bs4 import BeautifulSoup
 
 LINE_NUM_THRESHOLD = 20
 
-def filter(text: str) -> str:
-    if '[DOWNLOAD' in text:
-        return ''
+
+def create_uuid(k: int):
+    id_str = ''
+    for l in [10000, 1000, 100, 10]:
+        if k < l:
+            id_str += '0'
+    id_str += str(k)
+    return id_str
+
+
+def filter_text(text: str) -> str:
     text = text.replace('\n', '')
+    if '[DOWNLOAD' in text or '[youtube=' in text:
+        return ''
+    if 'http' in text:
+        print(text)
     return text
 
 
@@ -30,7 +42,7 @@ def clean_txt(txt_dir_path, filename):
             if i == 0:
                 ep_date = line.replace('\n', '')
                 continue
-            text.append(filter(line))
+            text.append(filter_text(line))
     text = '    '.join(text)
     return ep_name, ep_date, text
 
@@ -39,12 +51,15 @@ def txt_to_csv(data_dir, transcript_txt_dir, final_csv_filename):
     txt_dir_path = f'{data_dir}/{transcript_txt_dir}'
     txt_files = os.listdir(txt_dir_path)
     csv_data = []
+    id_int = 0
     for filename in txt_files:
         ep_name, ep_date, text = clean_txt(txt_dir_path, filename)
         if ep_name is None:
             continue
-        csv_data.append([ep_name, ep_date, text])
-    data_df = pd.DataFrame(csv_data, columns=['ep_name', 'ep_date', 'simple_text'])
+        id_str = create_uuid(id_int)
+        id_int += 1
+        csv_data.append([id_str, ep_name, ep_date, text])
+    data_df = pd.DataFrame(csv_data, columns=['ep_id', 'ep_name', 'ep_date', 'simple_text'])
     df_path = f'{data_dir}/{final_csv_filename}.csv'
     data_df.to_csv(df_path, index=False)
 
@@ -124,6 +139,6 @@ FINAL_CSV_NAME = 'transcripts'
 if __name__ == '__main__':
     if not os.path.exists(DATA_DIR):
         os.mkdir(DATA_DIR)
-    # extract_podcast_urls(TRANSCRIPT_MAIN_URL, DATA_DIR, URL_SAVENAME)
-    # scrape_to_txt(DATA_DIR, TRASCRIPT_TXT_DIR, URL_SAVENAME)
+    extract_podcast_urls(TRANSCRIPT_MAIN_URL, DATA_DIR, URL_SAVENAME)
+    scrape_to_txt(DATA_DIR, TRASCRIPT_TXT_DIR, URL_SAVENAME)
     txt_to_csv(DATA_DIR, TRASCRIPT_TXT_DIR, FINAL_CSV_NAME)
